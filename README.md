@@ -7,6 +7,20 @@ Full-stack Memo App with a Node/Express backend, React/TypeScript frontend, and 
 - `client/` - React + TypeScript frontend (Create React App)
 - `docker-compose.yml` - Orchestrates MongoDB, backend, and frontend containers
 
+## Architecture (three-tier)
+
+This project is a classic three-tier application composed of:
+
+- Frontend (Presentation tier): the React/TypeScript app in `client/`. It provides the UI, makes HTTP requests to the backend API, and runs in a browser. When deployed via Docker Compose the frontend is built and served by a container listening on port 3000.
+
+- Backend (Application/API tier): the Node.js + Express server in `server/`. It exposes REST API endpoints under `/api` for authentication and memo CRUD operations, handles business logic, user sessions/JWT, file uploads, and communicates with MongoDB. The backend listens on port 5000.
+
+- Database (Data tier): MongoDB (the `mongo` service in `docker-compose.yml`). It stores users, memos and file references. The backend connects to MongoDB using the `DATABASE` environment variable. In the Docker Compose setup the backend connects to the `mongo` service by hostname.
+
+The tiers communicate over defined network boundaries. In Docker Compose a dedicated `memo-network` bridge network connects services; the frontend talks to the backend at `http://backend:5000` inside the network, and the backend talks to `mongo` for persistence.
+
+This separation keeps concerns clear and makes it straightforward to scale, containerize, or replace components independently.
+
 ## Prerequisites
 - Docker and Docker Compose installed (Docker Desktop or Docker Engine + docker-compose)
 - Git (repo already cloned)
