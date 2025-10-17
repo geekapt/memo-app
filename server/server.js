@@ -40,6 +40,11 @@ app.get('/health', (req, res) => {
   return res.status(200).json({ status: 'ok' });
 });
 
+// Root endpoint to indicate backend is running
+app.get('/', (req, res) => {
+  return res.status(200).json({ status: 'ok', message: 'Backend is running' });
+});
+
 // Serve static assets in production
 if (process.env.NODE_ENV === 'production') {
   // Set static folder
