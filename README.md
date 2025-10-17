@@ -17,7 +17,7 @@ This project is a classic three-tier application composed of:
 
 - Database (Data tier): MongoDB (the `mongo` service in `docker-compose.yml`). It stores users, memos and file references. The backend connects to MongoDB using the `DATABASE` environment variable. In the Docker Compose setup the backend connects to the `mongo` service by hostname.
 
-The tiers communicate over defined network boundaries. In Docker Compose a dedicated `memo-network` bridge network connects services; the frontend talks to the backend at `http://backend:5000` inside the network, and the backend talks to `mongo` for persistence.
+The tiers communicate over defined network boundaries. In Docker Compose a dedicated `memo-network` bridge network connects services; the frontend talks to the backend at `http://localhost:5000` inside the network, and the backend talks to `mongo` for persistence.
 
 This separation keeps concerns clear and makes it straightforward to scale, containerize, or replace components independently.
 
@@ -76,7 +76,7 @@ Ports exposed by the compose setup:
 Environment variables used by services (from `.env`):
 - MONGO_INITDB_ROOT_USERNAME, MONGO_INITDB_ROOT_PASSWORD, MONGO_INITDB_DATABASE
 - DATABASE, JWT_SECRET, JWT_EXPIRES_IN, JWT_COOKIE_EXPIRES
-- REACT_APP_API_URL is set inside the compose for the frontend to `http://backend:5000/api`
+- REACT_APP_API_URL is set inside the compose for the frontend to `http://localhost:5000/api`
 
 Healthchecks
 - Compose config includes healthchecks for `mongo`, `backend`, and `frontend` so Compose will wait for `mongo` to become healthy before starting `backend`.
