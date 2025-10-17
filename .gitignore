@@ -1,6 +1,5 @@
 .env
 
-/client/uploads/*
 /server/node_modules
 /client/node_modules
 /.pnp
