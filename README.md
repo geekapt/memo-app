@@ -15,9 +15,14 @@ This project is a classic three-tier application composed of:
 
 - Backend (Application/API tier): the Node.js + Express server in `server/`. It exposes REST API endpoints under `/api` for authentication and memo CRUD operations, handles business logic, user sessions/JWT, file uploads, and communicates with MongoDB. The backend listens on port 5000.
 
-- Database (Data tier): MongoDB (the `mongo` service in `docker-compose.yml`). It stores users, memos and file references. The backend connects to MongoDB using the `DATABASE` environment variable. In the Docker Compose setup the backend connects to the `mongo` service by hostname.
+- Database (Data tier): MongoDB (the `mongo` service in `docker-compose.yml` or `mongodb` service in K8s). It stores users, memos and file references. The backend connects to MongoDB using the `DATABASE` environment variable.
 
-The tiers communicate over defined network boundaries. In Docker Compose a dedicated `memo-network` bridge network connects services; the frontend talks to the backend at `http://localhost:5000` inside the network, and the backend talks to `mongo` for persistence.
+The tiers communicate over defined network boundaries:
+*   **Docker Compose**: A dedicated `memo-network` bridge network connects services.
+*   **Kubernetes**:
+    *   **Ingress**: Entry point (`memo-app.local`) routing traffic to services.
+    *   **Services**: `memo-app-frontend` (NodePort/ClusterIP) and `memo-app-backend` (ClusterIP).
+    *   **Pods**: Ephemeral containers running the application logic.
 
 This separation keeps concerns clear and makes it straightforward to scale, containerize, or replace components independently.
 
@@ -230,4 +235,34 @@ The frontend service is exposed via NodePort `30000`.
 
 *   **HTTPS Redirects**:
     *   The Ingress is configured to disable SSL redirects (`nginx.ingress.kubernetes.io/ssl-redirect: "false"`) to allow plain HTTP access. Clear your browser cache if you get forced to HTTPS.
+
+---
+
+## Development Log & Issues Resolved
+
+This section tracks the challenges faced during the DevOps implementation and their solutions.
+
+### 1. CI/CD Pipeline (GitLab CI)
+*   **Issue**: `docker push` permission denied.
+    *   **Fix**: Authenticated using `docker login` with `CI_REGISTRY_USER` and `CI_REGISTRY_PASSWORD`.
+*   **Issue**: `docker scan` command not found.
+    *   **Fix**: Replaced with `trivy image` for vulnerability scanning.
+*   **Issue**: YAML syntax errors in `.gitlab-ci.yml`.
+    *   **Fix**: Corrected indentation and job dependencies.
+
+### 2. Docker & Security
+*   **Issue**: Frontend running as root.
+    *   **Fix**: Updated `client/Dockerfile` to use a multi-stage build with Nginx running as a non-root user (port 8080).
+*   **Issue**: MongoDB authentication failures ("UserNotFound").
+    *   **Fix**: Added troubleshooting step to reset volumes (`docker compose down -v`) to clear old uninitialized data.
+
+### 3. Kubernetes Migration
+*   **Issue**: `apiVersion` mismatch (`Deployment` in `v1`).
+    *   **Fix**: Updated manifests to use `apps/v1`.
+*   **Issue**: Frontend port mismatch.
+    *   **Fix**: Updated `client/deploy.yml` and `service.yml` to use port **8080** (matching the non-root Nginx container) instead of 80.
+*   **Issue**: "Connection Refused" / CORS errors.
+    *   **Fix**: Frontend URL was hardcoded to `localhost:5000`. Updated `App.tsx` to use relative path `/api/v1` to route through Ingress.
+*   **Issue**: Ingress forced HTTPS redirect.
+    *   **Fix**: Added `nginx.ingress.kubernetes.io/ssl-redirect: "false"` annotation to allow HTTP access.
 
