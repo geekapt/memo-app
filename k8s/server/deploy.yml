@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: memo-app-backend
+  namespace: memo-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: memo-app-backend
+  template:
+    metadata:
+      labels:
+        app: memo-app-backend
+    spec:
+      containers:
+        - name: memo-app-backend
+          image: imumesh/memo-app-backend:master-2025-11-23
+          ports:
+            - containerPort: 5000
+          env:
+            - name: DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: server-secret
+                  key: database-url
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: server-secret
+                  key: jwt-secret
+            - name: JWT_EXPIRES_IN
+              valueFrom:
+                secretKeyRef:
+                  name: server-secret
+                  key: jwt-expires-in
+            - name: JWT_COOKIE_EXPIRES
+              valueFrom:
+                secretKeyRef:
+                  name: server-secret
+                  key: jwt-cookie-expires

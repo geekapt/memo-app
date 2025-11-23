@@ -34,12 +34,12 @@ Example `.env` (replace placeholders):
 
 ```
 # MongoDB root user (used for the mongo container)
-MONGO_INITDB_ROOT_USERNAME=admin
-MONGO_INITDB_ROOT_PASSWORD=securepassword
+MONGO_INITDB_ROOT_USERNAME=memo_admin
+MONGO_INITDB_ROOT_PASSWORD=memo_password123
 MONGO_INITDB_DATABASE=memo-app-db
 
 # Backend (server) env
-DATABASE=mongodb://admin:securepassword@mongo:27017/memo-app-db?authSource=admin
+DATABASE=mongodb://memo_admin:memo_password123@mongo:27017/memo-app-db?authSource=admin
 JWT_SECRET=your_jwt_secret_key_here
 JWT_EXPIRES_IN=90d
 JWT_COOKIE_EXPIRES=90
@@ -119,6 +119,11 @@ Client (inside `client/`):
 
 ## Troubleshooting
 - If Docker Compose fails to start the backend because it can't connect to MongoDB, ensure `.env` variables are correct and `mongo` container is healthy.
+- **MongoDB Authentication Failed**: If you see "Authentication failed" or "UserNotFound", it means the database volume contains old data. You MUST reset the volume:
+  ```bash
+  docker compose down -v
+  docker compose up --build
+  ```
 - If frontend shows CORS errors when running without Docker, confirm `REACT_APP_API_URL` points to the backend and that backend CORS configuration allows requests from your origin.
 
 ## Notes on the repo state
@@ -135,9 +140,94 @@ I added `client/.git.hidden` to `client/.gitignore` and removed it from tracking
 
 ---
 
-If you'd like I can also:
-- Add a Makefile or simple `scripts/` to automate local dev start (e.g., `make up` to docker compose up)
-- Add container health endpoints or readiness checks
-- Provide sample `docker-compose.override.yml` for local development
+## Kubernetes Deployment
 
-"Happy hacking!"
+This project includes a complete Kubernetes configuration in the `k8s/` directory.
+
+### Prerequisites
+
+1.  **Kubernetes Cluster**: Minikube, Kind, or a cloud provider.
+2.  **Ingress Controller**: Required for domain-based routing.
+    ```bash
+    # For Kind/Cloud (standard):
+    kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
+    
+    # For Minikube:
+    minikube addons enable ingress
+    ```
+
+### 1. Secrets Configuration
+
+Sensitive data is stored in Kubernetes Secrets. The values must be **base64 encoded**.
+
+*   `k8s/mongodb/secrets.yml`: Database root credentials (`mongo-root-username`, `mongo-root-password`).
+*   `k8s/server/secrets.yml`: Backend config (`database-url`, `jwt-secret`).
+
+To encode a value:
+```bash
+echo -n "your_value" | base64
+```
+
+### 2. Deploying the Application
+
+Run the following commands in order:
+
+```bash
+# 1. Create Namespace
+kubectl apply -f k8s/namespace.yml
+
+# 2. Deploy MongoDB (Storage, Secrets, Deployment, Service)
+kubectl apply -f k8s/mongodb/
+
+# 3. Deploy Backend (Secrets, Deployment, Service)
+kubectl apply -f k8s/server/
+
+# 4. Deploy Frontend (Deployment, Service)
+kubectl apply -f k8s/client/
+
+# 5. Configure Ingress (Routing)
+kubectl apply -f k8s/ingress.yml
+```
+
+### 3. Accessing the App
+
+#### Option A: Ingress (Recommended)
+1.  Add the domain to your `/etc/hosts`:
+    ```
+    127.0.0.1 memo-app.local
+    ```
+2.  **Important**: If running locally (Kind/Minikube) without a LoadBalancer IP, you must port-forward the Ingress Controller:
+    ```bash
+    kubectl port-forward -n ingress-nginx service/ingress-nginx-controller 8080:80
+    ```
+3.  Access at: `http://memo-app.local:8080`
+
+#### Option B: NodePort (Direct Access)
+The frontend service is exposed via NodePort `30000`.
+*   Access at: `http://localhost:30000` (or your Node IP).
+
+### 4. Troubleshooting
+
+*   **Frontend API Connection**:
+    *   Ensure `client/src/App.tsx` and `client/src/contexts/AuthContext.tsx` use a relative path:
+        ```javascript
+        axios.defaults.baseURL = '/api/v1';
+        ```
+    *   If using the old image with hardcoded `localhost:5000`, you must port-forward the backend:
+        ```bash
+        kubectl port-forward -n memo-app service/memo-app-backend 5000:5000
+        ```
+
+*   **MongoDB Connection**:
+    *   To debug database issues, exec into the MongoDB pod:
+        ```bash
+        kubectl exec -it -n memo-app <mongodb-pod-name> -- bash
+        ```
+    *   Connect using `mongosh` (note the hostname `mongodb` matches the K8s service name):
+        ```bash
+        mongosh "mongodb://memo_admin:memo_password123@mongodb:27017/memo-app-db?authSource=admin"
+        ```
+
+*   **HTTPS Redirects**:
+    *   The Ingress is configured to disable SSL redirects (`nginx.ingress.kubernetes.io/ssl-redirect: "false"`) to allow plain HTTP access. Clear your browser cache if you get forced to HTTPS.
+

@@ -12,7 +12,7 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
       MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE}
     healthcheck:
-      test: ["CMD", "mongosh", "--username", "${MONGO_INITDB_ROOT_USERNAME}", "--password", "${MONGO_INITDB_ROOT_PASSWORD}", "--authenticationDatabase", "${MONGO_INITDB_ROOT_USERNAME}", "--eval", "db.${MONGO_INITDB_ROOT_USERNAME}Command('ping')"]
+      test: ["CMD", "mongosh", "--username", "${MONGO_INITDB_ROOT_USERNAME}", "--password", "${MONGO_INITDB_ROOT_PASSWORD}", "--authenticationDatabase", "admin", "--eval", "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -41,7 +41,7 @@ services:
     volumes:
       - ./server/uploads:/app/uploads
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:5000/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -54,14 +54,14 @@ services:
       dockerfile: Dockerfile
     container_name: memo-frontend
     ports:
-      - "3000:3000"
+      - "3000:8080"
     restart: unless-stopped
     depends_on:
       - backend
     environment:
       REACT_APP_API_URL: http://backend:5000/api
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3

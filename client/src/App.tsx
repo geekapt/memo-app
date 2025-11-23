@@ -29,19 +29,19 @@ interface Memo {
 }
 
 // Simple Icon component to handle consistent sizing
-const Icon = ({ 
-  children, 
-  size = 20, 
-  className = '' 
-}: { 
-  children: React.ReactNode; 
-  size?: number; 
+const Icon = ({
+  children,
+  size = 20,
+  className = ''
+}: {
+  children: React.ReactNode;
+  size?: number;
   className?: string;
 }) => (
-  <span 
+  <span
     className={className}
-    style={{ 
-      display: 'inline-flex', 
+    style={{
+      display: 'inline-flex',
       alignItems: 'center',
       justifyContent: 'center',
       width: size,
@@ -62,46 +62,46 @@ const MemoApp = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-useEffect(() => {
-const loadMemos = async () => {
-  try {
-    const response = await axios.get('/memos');
-    console.log('API Response:', response.data); // Debug the response
+  useEffect(() => {
+    const loadMemos = async () => {
+      try {
+        const response = await axios.get('/memos');
+        console.log('API Response:', response.data); // Debug the response
 
-    // Handle different response formats
-    let memosData = [];
+        // Handle different response formats
+        let memosData = [];
 
-    if (response.data?.data?.memos) {
-      memosData = Array.isArray(response.data.data.memos) ? response.data.data.memos : [];
-    } else if (response.data?.memos) {
-      memosData = Array.isArray(response.data.memos) ? response.data.memos : [];
-    } else if (Array.isArray(response.data)) {
-      memosData = response.data;
+        if (response.data?.data?.memos) {
+          memosData = Array.isArray(response.data.data.memos) ? response.data.data.memos : [];
+        } else if (response.data?.memos) {
+          memosData = Array.isArray(response.data.memos) ? response.data.memos : [];
+        } else if (Array.isArray(response.data)) {
+          memosData = response.data;
+        }
+
+        console.log('Processed memos data:', memosData); // Debug the processed data
+
+        setMemos(memosData.map((memo: any) => ({
+          ...memo,
+          id: memo._id || memo.id,
+          createdAt: memo.createdAt ? new Date(memo.createdAt) : new Date(),
+          updatedAt: memo.updatedAt ? new Date(memo.updatedAt) : new Date()
+        })));
+      } catch (error: unknown) {
+        console.error('Error loading memos:', error);
+        const errorMessage = isAxiosError(error) && error.response?.data && typeof error.response.data === 'object' && 'message' in error.response.data
+          ? (error.response.data as { message: string }).message || 'Failed to load memos. Please try again.'
+          : isError(error)
+            ? error.message
+            : 'An unknown error occurred';
+        setError(errorMessage);
+      }
+    };
+
+    if (user) {
+      loadMemos();
     }
-
-    console.log('Processed memos data:', memosData); // Debug the processed data
-
-    setMemos(memosData.map((memo: any) => ({
-      ...memo,
-      id: memo._id || memo.id,
-      createdAt: memo.createdAt ? new Date(memo.createdAt) : new Date(),
-      updatedAt: memo.updatedAt ? new Date(memo.updatedAt) : new Date()
-    })));
-  } catch (error: unknown) {
-    console.error('Error loading memos:', error);
-    const errorMessage = isAxiosError(error) && error.response?.data && typeof error.response.data === 'object' && 'message' in error.response.data
-      ? (error.response.data as { message: string }).message || 'Failed to load memos. Please try again.'
-      : isError(error)
-        ? error.message
-        : 'An unknown error occurred';
-    setError(errorMessage);
-  }
-};
-
-  if (user) {
-    loadMemos();
-  }
-}, [user]);
+  }, [user]);
 
   const toggleDarkMode = () => {
     const newDarkMode = !darkMode;
@@ -110,256 +110,256 @@ const loadMemos = async () => {
     document.documentElement.classList.toggle('dark', newDarkMode);
   };
 
-  const filteredMemos = memos.filter(memo => 
+  const filteredMemos = memos.filter(memo =>
     memo.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     memo.content.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-// Configure axios defaults
-axios.defaults.baseURL = 'http://localhost:5000/api/v1';
+  // Configure axios defaults
+  axios.defaults.baseURL = '/api/v1';
 
-// Configure axios to include the auth token in requests
-axios.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-}, (error) => {
-  return Promise.reject(error);
-});
-
-// Add response interceptor to handle common errors
-axios.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      window.location.href = '/login';
+  // Configure axios to include the auth token in requests
+  axios.interceptors.request.use((config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
+    return config;
+  }, (error) => {
     return Promise.reject(error);
-  }
-);
+  });
 
-const loadMemos = async () => {
-  try {
-    const response = await axios.get('/memos');
-    console.log('API Response:', response.data); // Debug the response
-
-    // Handle different response formats
-    let memosData = [];
-
-    if (response.data?.data?.memos) {
-      memosData = Array.isArray(response.data.data.memos) ? response.data.data.memos : [];
-    } else if (response.data?.memos) {
-      memosData = Array.isArray(response.data.memos) ? response.data.memos : [];
-    } else if (Array.isArray(response.data)) {
-      memosData = response.data;
+  // Add response interceptor to handle common errors
+  axios.interceptors.response.use(
+    (response) => response,
+    (error) => {
+      if (error.response?.status === 401) {
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+      }
+      return Promise.reject(error);
     }
+  );
 
-    console.log('Processed memos data:', memosData); // Debug the processed data
-
-    setMemos(memosData.map((memo: any) => ({
-      ...memo,
-      id: memo._id || memo.id,
-      createdAt: memo.createdAt ? new Date(memo.createdAt) : new Date(),
-      updatedAt: memo.updatedAt ? new Date(memo.updatedAt) : new Date()
-    })));
-  } catch (error: unknown) {
-    console.error('Error loading memos:', error);
-    const errorMessage = isAxiosError(error) && error.response?.data && typeof error.response.data === 'object' && 'message' in error.response.data
-      ? (error.response.data as { message: string }).message || 'Failed to load memos. Please try again.'
-      : isError(error)
-        ? error.message
-        : 'An unknown error occurred';
-    setError(errorMessage);
-  }
-};
-
-const handleNewMemo = async () => {
-  try {
-    const response = await axios.post('/memos', {
-      title: 'Untitled Note',
-      content: 'Start writing your note here...'
-    });
-
-    // The backend returns { status: 'success', data: { memo: {...} } }
-    const newMemo = {
-      ...response.data.data.memo,
-      id: response.data.data.memo._id || response.data.data.memo.id,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-
-    setMemos(prevMemos => [newMemo, ...prevMemos]);
-    setActiveMemo(newMemo);
-  } catch (error: unknown) {
-    console.error('Error creating memo:', error);
-    const errorMessage = isAxiosError(error) && error.response?.data && typeof error.response.data === 'object' && 'message' in error.response.data
-      ? (error.response.data as { message: string }).message || 'Failed to create memo. Please try again.'
-      : isError(error)
-        ? error.message
-        : 'An unknown error occurred';
-    setError(errorMessage);
-  }
-};
-
-const handleDelete = async (id: string) => {
-  if (!id) return;
-
-  try {
-    await axios.delete(`/memos/${id}`);
-    setMemos(prevMemos => prevMemos.filter(memo => memo.id !== id));
-    if (activeMemo?.id === id) {
-      setActiveMemo(null);
-    }
-  } catch (error: unknown) {
-    console.error('Error deleting memo:', error);
-    const errorMessage = isAxiosError(error) && error.response?.data && typeof error.response.data === 'object' && 'message' in error.response.data
-      ? (error.response.data as { message: string }).message || 'Failed to delete memo. Please try again.'
-      : isError(error)
-        ? error.message
-        : 'An unknown error occurred';
-    setError(errorMessage);
-  }
-};
-
-const handleSave = useCallback(async (updatedMemo: Memo) => {
-  if (!updatedMemo?.id) return;
-  
-  try {
-    const response = await axios.patch(`/memos/${updatedMemo.id}`, {
-      title: updatedMemo.title,
-      content: updatedMemo.content
-    });
-    
-    // Handle different response formats
-    const memoData = response.data?.data?.memo || response.data?.memo || response.data;
-    
-    if (!memoData) {
-      throw new Error('Invalid response format from server');
-    }
-    
-    const savedMemo = {
-      ...memoData,
-      id: memoData._id || memoData.id,
-      updatedAt: new Date()
-    };
-    
-    setMemos(prevMemos => 
-      prevMemos.map(memo => 
-        memo.id === updatedMemo.id ? { ...memo, ...savedMemo } : memo
-      )
-    );
-    return savedMemo;
-  } catch (error: unknown) {
-    console.error('Error saving memo:', error);
-    const errorMessage = (error as any)?.response?.data?.message || 'Failed to save memo. Please try again.';
-    setError(errorMessage);
-    throw error;
-  }
-}, []);
-
-// Update the auth check in the component with proper dependencies
-useEffect(() => {
-  const checkAuth = async () => {
+  const loadMemos = async () => {
     try {
-      // Try the auth endpoint with error handling for 404
+      const response = await axios.get('/memos');
+      // console.log('API Response:', response.data); // Debug the response
+
+      // Handle different response formats
+      let memosData = [];
+
+      if (response.data?.data?.memos) {
+        memosData = Array.isArray(response.data.data.memos) ? response.data.data.memos : [];
+      } else if (response.data?.memos) {
+        memosData = Array.isArray(response.data.memos) ? response.data.memos : [];
+      } else if (Array.isArray(response.data)) {
+        memosData = response.data;
+      }
+
+      // console.log('Processed memos data:', memosData); // Debug the processed data
+
+      setMemos(memosData.map((memo: any) => ({
+        ...memo,
+        id: memo._id || memo.id,
+        createdAt: memo.createdAt ? new Date(memo.createdAt) : new Date(),
+        updatedAt: memo.updatedAt ? new Date(memo.updatedAt) : new Date()
+      })));
+    } catch (error: unknown) {
+      console.error('Error loading memos:', error);
+      const errorMessage = isAxiosError(error) && error.response?.data && typeof error.response.data === 'object' && 'message' in error.response.data
+        ? (error.response.data as { message: string }).message || 'Failed to load memos. Please try again.'
+        : isError(error)
+          ? error.message
+          : 'An unknown error occurred';
+      setError(errorMessage);
+    }
+  };
+
+  const handleNewMemo = async () => {
+    try {
+      const response = await axios.post('/memos', {
+        title: 'Untitled Note',
+        content: 'Start writing your note here...'
+      });
+
+      // The backend returns { status: 'success', data: { memo: {...} } }
+      const newMemo = {
+        ...response.data.data.memo,
+        id: response.data.data.memo._id || response.data.data.memo.id,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      setMemos(prevMemos => [newMemo, ...prevMemos]);
+      setActiveMemo(newMemo);
+    } catch (error: unknown) {
+      console.error('Error creating memo:', error);
+      const errorMessage = isAxiosError(error) && error.response?.data && typeof error.response.data === 'object' && 'message' in error.response.data
+        ? (error.response.data as { message: string }).message || 'Failed to create memo. Please try again.'
+        : isError(error)
+          ? error.message
+          : 'An unknown error occurred';
+      setError(errorMessage);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!id) return;
+
+    try {
+      await axios.delete(`/memos/${id}`);
+      setMemos(prevMemos => prevMemos.filter(memo => memo.id !== id));
+      if (activeMemo?.id === id) {
+        setActiveMemo(null);
+      }
+    } catch (error: unknown) {
+      console.error('Error deleting memo:', error);
+      const errorMessage = isAxiosError(error) && error.response?.data && typeof error.response.data === 'object' && 'message' in error.response.data
+        ? (error.response.data as { message: string }).message || 'Failed to delete memo. Please try again.'
+        : isError(error)
+          ? error.message
+          : 'An unknown error occurred';
+      setError(errorMessage);
+    }
+  };
+
+  const handleSave = useCallback(async (updatedMemo: Memo) => {
+    if (!updatedMemo?.id) return;
+
+    try {
+      const response = await axios.patch(`/memos/${updatedMemo.id}`, {
+        title: updatedMemo.title,
+        content: updatedMemo.content
+      });
+
+      // Handle different response formats
+      const memoData = response.data?.data?.memo || response.data?.memo || response.data;
+
+      if (!memoData) {
+        throw new Error('Invalid response format from server');
+      }
+
+      const savedMemo = {
+        ...memoData,
+        id: memoData._id || memoData.id,
+        updatedAt: new Date()
+      };
+
+      setMemos(prevMemos =>
+        prevMemos.map(memo =>
+          memo.id === updatedMemo.id ? { ...memo, ...savedMemo } : memo
+        )
+      );
+      return savedMemo;
+    } catch (error: unknown) {
+      console.error('Error saving memo:', error);
+      const errorMessage = (error as any)?.response?.data?.message || 'Failed to save memo. Please try again.';
+      setError(errorMessage);
+      throw error;
+    }
+  }, []);
+
+  // Update the auth check in the component with proper dependencies
+  useEffect(() => {
+    const checkAuth = async () => {
       try {
-        await axios.get('/auth/me');
-      } catch (authError: unknown) {
-        if (isAxiosError(authError) && authError.response?.status === 404) {
-          console.log('Auth endpoint not found, continuing with memo load...');
+        // Try the auth endpoint with error handling for 404
+        try {
+          await axios.get('/auth/me');
+        } catch (authError: unknown) {
+          if (isAxiosError(authError) && authError.response?.status === 404) {
+            console.log('Auth endpoint not found, continuing with memo load...');
+          } else {
+            throw authError;
+          }
+        }
+
+        // Load memos after auth check
+        await loadMemos();
+      } catch (error: unknown) {
+        if (isAxiosError(error) && error.response?.status === 401) {
+          logout();
+          navigate('/login');
         } else {
-          throw authError;
+          console.error('Auth check failed:', error);
+          const errorMessage = isError(error) ? error.message : 'Failed to authenticate. Please try logging in again.';
+          setError(errorMessage);
         }
       }
-
-      // Load memos after auth check
-      await loadMemos();
-    } catch (error: unknown) {
-      if (isAxiosError(error) && error.response?.status === 401) {
-        logout();
-        navigate('/login');
-      } else {
-        console.error('Auth check failed:', error);
-        const errorMessage = isError(error) ? error.message : 'Failed to authenticate. Please try logging in again.';
-        setError(errorMessage);
-      }
-    }
-  };
-
-  if (user) {
-    checkAuth();
-  }
-}, [user, logout, navigate]);
-
-// Demo function to create a test memo
-const createDemoMemo = async () => {
-  try {
-    const response = await axios.post('/memos', {
-      title: 'Demo Note - Getting Started',
-      content: 'This is a demo note to test the memo app functionality.\n\nYou can:\n• Create new notes\n• Edit existing notes\n• Delete notes\n• Search through notes\n\nThe app automatically saves your changes!'
-    });
-
-    const newMemo = {
-      ...response.data.data.memo,
-      id: response.data.data.memo._id || response.data.data.memo.id,
-      createdAt: new Date(),
-      updatedAt: new Date()
     };
 
-    setMemos(prevMemos => [newMemo, ...prevMemos]);
-    setActiveMemo(newMemo);
-    setError(null); // Clear any previous errors
-  } catch (error: unknown) {
-    console.error('Error creating demo memo:', error);
-    const errorMessage = isAxiosError(error) && error.response?.data && typeof error.response.data === 'object' && 'message' in error.response.data
-      ? (error.response.data as { message: string }).message || 'Failed to create demo memo. Please try again.'
-      : isError(error)
-        ? error.message
-        : 'An unknown error occurred';
-    setError(errorMessage);
-  }
-};
-
-// Debounce function to prevent excessive API calls
-const debounce = (func: Function, delay: number) => {
-  let timeoutId: NodeJS.Timeout;
-  return (...args: any[]) => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => func(...args), delay);
-  };
-};
-
-// Debounced save function
-const debouncedSave = useCallback(
-  debounce(async (memo: Memo) => {
-    try {
-      await handleSave(memo);
-    } catch (error) {
-      console.error('Failed to save memo:', error);
+    if (user) {
+      checkAuth();
     }
-  }, 1000), // Save after 1 second of inactivity
-  []
-);
+  }, [user, logout, navigate]);
 
-// Add error display in the UI
-if (error) {
-  return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg">
-        <p className="text-red-500">{error}</p>
-        <button 
-          onClick={() => setError(null)}
-          className="mt-2 px-4 py-2 bg-blue-500 text-white rounded"
-        >
-          OK
-        </button>
-      </div>
-    </div>
+  // Demo function to create a test memo
+  const createDemoMemo = async () => {
+    try {
+      const response = await axios.post('/memos', {
+        title: 'Demo Note - Getting Started',
+        content: 'This is a demo note to test the memo app functionality.\n\nYou can:\n• Create new notes\n• Edit existing notes\n• Delete notes\n• Search through notes\n\nThe app automatically saves your changes!'
+      });
+
+      const newMemo = {
+        ...response.data.data.memo,
+        id: response.data.data.memo._id || response.data.data.memo.id,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      setMemos(prevMemos => [newMemo, ...prevMemos]);
+      setActiveMemo(newMemo);
+      setError(null); // Clear any previous errors
+    } catch (error: unknown) {
+      console.error('Error creating demo memo:', error);
+      const errorMessage = isAxiosError(error) && error.response?.data && typeof error.response.data === 'object' && 'message' in error.response.data
+        ? (error.response.data as { message: string }).message || 'Failed to create demo memo. Please try again.'
+        : isError(error)
+          ? error.message
+          : 'An unknown error occurred';
+      setError(errorMessage);
+    }
+  };
+
+  // Debounce function to prevent excessive API calls
+  const debounce = (func: Function, delay: number) => {
+    let timeoutId: NodeJS.Timeout;
+    return (...args: any[]) => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => func(...args), delay);
+    };
+  };
+
+  // Debounced save function
+  const debouncedSave = useCallback(
+    debounce(async (memo: Memo) => {
+      try {
+        await handleSave(memo);
+      } catch (error) {
+        console.error('Failed to save memo:', error);
+      }
+    }, 1000), // Save after 1 second of inactivity
+    []
   );
-}
+
+  // Add error display in the UI
+  if (error) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg">
+          <p className="text-red-500">{error}</p>
+          <button
+            onClick={() => setError(null)}
+            className="mt-2 px-4 py-2 bg-blue-500 text-white rounded"
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const handleLogout = () => {
     logout();
@@ -457,9 +457,8 @@ if (error) {
               {filteredMemos.map(memo => (
                 <div
                   key={memo.id}
-                  className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer ${
-                    activeMemo?.id === memo.id ? 'bg-gray-100 dark:bg-gray-700' : ''
-                  }`}
+                  className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer ${activeMemo?.id === memo.id ? 'bg-gray-100 dark:bg-gray-700' : ''
+                    }`}
                   onClick={() => {
                     setActiveMemo(memo);
                     setSidebarOpen(false); // Close sidebar on mobile when selecting a memo

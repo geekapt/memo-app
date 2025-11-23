@@ -1,0 +1,106 @@
+stages:
+  - install-tools
+  - gitleaks
+  - trivy-scan
+  - sonarqube
+  - docker-build-scan-and-push
+
+install-tools:      
+  stage: install-tools
+  script:
+    - echo "Running on memo-app runner"
+    - sudo apt-get install wget apt-transport-https gnupg lsb-release -y
+    - wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+    - echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+    - sudo apt update
+    # Install gitleaks via binary
+    - wget https://github.com/gitleaks/gitleaks/releases/download/v8.18.2/gitleaks_8.18.2_linux_x64.tar.gz
+    - tar -xzf gitleaks_8.18.2_linux_x64.tar.gz
+    - sudo mv gitleaks /usr/local/bin/
+    - rm gitleaks_8.18.2_linux_x64.tar.gz
+    - sudo apt install -y trivy
+    
+  # tags:
+  #   - memo-app
+
+gitleaks:
+  stage: gitleaks
+  script:
+    - echo "Running gitleaks"
+    - gitleaks detect --source . -r gitleaks-report.txt --redact
+    - echo "Gitleaks completed successfully"
+  needs:
+    - install-tools
+  # tags:
+  #   - memo-app
+ 
+trivy-scan:
+  stage: trivy-scan
+  script:
+    - echo "Running trivy scan"
+    - trivy fs --format table -o trivy-report.html . 
+    - echo "Trivy scan completed successfully"
+  needs:
+    - gitleaks
+  # tags:
+  #   - memo-app
+
+sonarqube:
+  stage: sonarqube
+  image:
+    name: sonarsource/sonar-scanner-cli:11
+  needs:
+    - trivy-scan
+  cache:
+    policy: pull-push
+    key: "sonar-cache-$CI_COMMIT_REF_SLUG"  
+    paths:
+      - "${SONAR_USER_HOME}/cache"
+      - sonar-scanner/
+  script:
+    - echo "Running sonarqube"
+    - sonar-scanner -Dsonar.host.url="${SONAR_HOST_URL}" -Dsonar.login="${SONAR_TOKEN}"
+  allow_failure: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: $CI_COMMIT_BRANCH == 'master'
+
+docker-build-scan-and-push:
+  stage: docker-build-scan-and-push
+  image:
+    name: docker:20.10.17-dind
+  services:
+    - docker:20.10.17-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+  before_script:
+    - command -v docker &> /dev/null && echo "Docker is installed" || echo "Docker is not installed"
+  script:
+    - echo "Running docker build scan and push"
+    - docker logout
+    - '[ -z "$DOCKER_PASSWORD" ] && echo "Error: DOCKER_PASSWORD is empty" || echo "DOCKER_PASSWORD is set"'
+    - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+    - docker info
+    - "LOGGED_IN_USER=$(docker info | sed -n 's/ *Username: //p')"
+    - "DOCKER_USERNAME_LOWER=${LOGGED_IN_USER:-$DOCKER_USERNAME}"
+    - "DOCKER_USERNAME_LOWER=$(echo \"$DOCKER_USERNAME_LOWER\" | tr '[:upper:]' '[:lower:]' | cut -d@ -f1)"
+    - IMAGE_TAG="${CI_COMMIT_REF_SLUG}-$(date +'%Y-%m-%d')"
+    # Install trivy locally
+    - wget https://github.com/aquasecurity/trivy/releases/download/v0.48.0/trivy_0.48.0_Linux-64bit.tar.gz
+    - tar zxvf trivy_0.48.0_Linux-64bit.tar.gz
+    - chmod +x trivy
+
+  # Build and push backend
+    - BACKEND_NAME="$DOCKER_USERNAME_LOWER/memo-app-backend"
+    - docker build -t $BACKEND_NAME:$IMAGE_TAG ./server
+    - ./trivy image $BACKEND_NAME:$IMAGE_TAG    
+    - docker push $BACKEND_NAME:$IMAGE_TAG
+    
+    # Build and push frontend
+    - FRONTEND_NAME="$DOCKER_USERNAME_LOWER/memo-app-frontend"
+    - docker build -t $FRONTEND_NAME:$IMAGE_TAG ./client
+    - ./trivy image $FRONTEND_NAME:$IMAGE_TAG
+    - docker push $FRONTEND_NAME:$IMAGE_TAG
+  needs:
+    - sonarqube
